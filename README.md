@@ -289,6 +289,82 @@ const dispatch = useDispatch();
 dispatch(addFlux({ ...form, satelliteId: selectedSatelliteId }));
 ```
 
+### J) Redux Toolkit — Slice complet avec `createAsyncThunk` (CRUD API)
+```jsx
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
+
+const API_URL = "http://127.0.0.1:8000/api/stagiaire";
+
+// ===== THUNKS ASYNCHRONES (CRUD) =====
+export const getStagiaires = createAsyncThunk("stg/getAll", async () => {
+  const response = await axios.get(API_URL);
+  return response.data;
+});
+export const showStagiaire = createAsyncThunk("stg/getOne", async (id) => {
+  const response = await axios.get(`${API_URL}/${id}`);
+  return response.data;
+});
+export const createStagiaire = createAsyncThunk("stg/create", async (nouveauStg) => {
+  const response = await axios.post(API_URL, nouveauStg);
+  return response.data;
+});
+export const updateStagiaire = createAsyncThunk("stg/update", async (stgModifie) => {
+  const response = await axios.put(`${API_URL}/${stgModifie.id}`, stgModifie);
+  return response.data;
+});
+export const deleteStagiaire = createAsyncThunk("stg/delete", async (id) => {
+  await axios.delete(`${API_URL}/${id}`);
+  return id;
+});
+
+// ===== SLICE =====
+const StagiaireSlice = createSlice({
+  name: "stagiaireSlice",
+  initialState: {
+    stagiaires: [],
+    details_stagiaire: null,
+    loading: false,
+    error: null,
+    text_recherche: "",
+  },
+  reducers: {
+    setTexteRecherche: (state, action) => {
+      state.text_recherche = action.payload;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(getStagiaires.pending, (state) => { state.loading = true; })
+      .addCase(getStagiaires.fulfilled, (state, action) => {
+        state.loading = false;
+        state.stagiaires = action.payload;
+      })
+      .addCase(getStagiaires.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+      .addCase(showStagiaire.fulfilled, (state, action) => {
+        state.details_stagiaire = action.payload;
+      })
+      .addCase(createStagiaire.fulfilled, (state, action) => {
+        state.stagiaires.push(action.payload);
+      })
+      .addCase(updateStagiaire.fulfilled, (state, action) => {
+        const index = state.stagiaires.findIndex(stg => stg.id === action.payload.id);
+        if (index !== -1) state.stagiaires[index] = action.payload;
+      })
+      .addCase(deleteStagiaire.fulfilled, (state, action) => {
+        state.stagiaires = state.stagiaires.filter(stg => stg.id !== action.payload);
+      });
+  },
+});
+
+export const { setTexteRecherche } = StagiaireSlice.actions;
+export default StagiaireSlice.reducer;
+```
+> **Utilisation** : `dispatch(getStagiaires())` pour charger la liste, `dispatch(createStagiaire(data))` pour créer, etc. Gère automatiquement les 3 états (pending/fulfilled/rejected) du cycle de vie d'une requête API.
+
 ## 1.4 Ce qu'une réponse parfaite doit contenir
 - **Tous les `import`** en haut (`react-redux`, `react-router-dom`, `axios`, `useState/useEffect`).
 - `export default` du composant.
